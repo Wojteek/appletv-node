@@ -5,7 +5,7 @@ const protobufjs_1 = require("protobufjs");
 const uuid_1 = require("uuid");
 const path = require("path");
 const varint = require("varint");
-const snake = require("snake-case");
+const snake_case_1 = require("snake-case");
 const camelcase = require("camelcase");
 const typed_events_1 = require("./typed-events");
 const message_1 = require("./message");
@@ -118,7 +118,7 @@ class Connection extends typed_events_1.default {
         let ProtocolMessage = message.$type.parent['ProtocolMessage'];
         let types = ProtocolMessage.lookupEnum("Type");
         let name = message.$type.name;
-        let typeName = snake(name).toUpperCase();
+        let typeName = snake_case_1.snakeCase(name).toUpperCase();
         let type = types.values[typeName];
         var outerMessage = ProtocolMessage.create({
             priority: priority,

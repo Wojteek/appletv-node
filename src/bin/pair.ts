@@ -1,10 +1,7 @@
 import { prompt } from 'inquirer';
-import * as caporal from 'caporal';
 import * as ora from 'ora';
-
 import { AppleTV } from '../lib/appletv';
 import { Pairing } from '../lib/pairing';
-import { Verifier } from '../lib/verifier';
 
 export function pair(device: AppleTV, logger: Logger): Promise<AppleTV> {
   let spinner = ora("Connecting to " + device.name).start()

@@ -1,19 +1,14 @@
-import { load } from 'protobufjs';
-import * as path from 'path';
-import * as ed25519 from 'ed25519';
-import * as crypto from 'crypto';
-import * as curve25519 from 'curve25519-n2';
-
+import { sign, createKeyPair, verify } from 'ed25519-supercop';
+import * as curve25519 from 'curve25519-n';
 import { AppleTV } from './appletv';
-import { Credentials } from './credentials';
 import { Message } from './message';
 import tlv from './util/tlv';
 import enc from './util/encryption';
 
 export class Verifier {
-  constructor(public device: AppleTV) {
+  static ED25519 = 'ed25519';
 
-  }
+  constructor(public device: AppleTV) {}
 
   verify(): Promise<{}> {
     var verifyPrivate = Buffer.alloc(32);
@@ -50,10 +45,10 @@ export class Verifier {
 
         let sharedSecret = curve25519.deriveSharedSecret(verifyPrivate, sessionPublicKey);
         let encryptionKey = enc.HKDF(
-          "sha512",
-          Buffer.from("Pair-Verify-Encrypt-Salt"),
+          'sha512',
+          Buffer.from('Pair-Verify-Encrypt-Salt'),
           sharedSecret,
-          Buffer.from("Pair-Verify-Encrypt-Info"),
+          Buffer.from('Pair-Verify-Encrypt-Info'),
           32
         );
         let cipherText = encryptedData.slice(0, -16);
@@ -64,17 +59,19 @@ export class Verifier {
         let signature = innerTLV[tlv.Tag.Signature];
 
         if (!identifier.equals(that.device.credentials.identifier)) {
-          throw new Error("Identifier mismatch");
+          throw new Error('Identifier mismatch');
         }
 
         let deviceInfo = Buffer.concat([sessionPublicKey, Buffer.from(identifier), verifyPublic]);
-        if (!ed25519.Verify(deviceInfo, signature, that.device.credentials.publicKey)) {
-          throw new Error("Signature verification failed");
+        if (!verify(signature, deviceInfo, that.device.credentials.publicKey)) {
+          throw new Error('Signature verification failed');
         }
 
         let material = Buffer.concat([verifyPublic, Buffer.from(that.device.credentials.pairingId), sessionPublicKey]);
-        let keyPair = ed25519.MakeKeypair(that.device.credentials.encryptionKey);
-        let signed = ed25519.Sign(material, keyPair);
+
+        const { secretKey, publicKey } = createKeyPair(that.device.credentials.encryptionKey);
+        const signed = sign(material, publicKey, secretKey);
+
         let plainTLV = tlv.encode(
           tlv.Tag.Username, Buffer.from(that.device.credentials.pairingId),
           tlv.Tag.Signature, signed
@@ -99,17 +96,17 @@ export class Verifier {
           })
           .then(() => {
             let readKey = enc.HKDF(
-              "sha512",
-              Buffer.from("MediaRemote-Salt"),
+              'sha512',
+              Buffer.from('MediaRemote-Salt'),
               sharedSecret,
-              Buffer.from("MediaRemote-Read-Encryption-Key"),
+              Buffer.from('MediaRemote-Read-Encryption-Key'),
               32
             );
             let writeKey = enc.HKDF(
-              "sha512",
-              Buffer.from("MediaRemote-Salt"),
+              'sha512',
+              Buffer.from('MediaRemote-Salt'),
               sharedSecret,
-              Buffer.from("MediaRemote-Write-Encryption-Key"),
+              Buffer.from('MediaRemote-Write-Encryption-Key'),
               32
             );
 
@@ -137,7 +134,7 @@ export class Verifier {
         }
       });
       setTimeout(() => {
-        reject(new Error("Timed out waiting for crypto sequence " + sequence));
+        reject(new Error('Timed out waiting for crypto sequence ' + sequence));
       }, timeout * 1000);
     })
     .then(value => {

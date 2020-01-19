@@ -1,10 +1,6 @@
 import * as srp from 'fast-srp-hap';
-import { v4 as uuid } from 'uuid';
-import { load } from 'protobufjs';
-import * as path from 'path';
 import * as crypto from 'crypto';
-import * as ed25519 from 'ed25519';
-
+import { sign, createKeyPair } from 'ed25519-supercop';
 import { AppleTV } from './appletv';
 import { Credentials } from './credentials';
 import { Message } from './message';
@@ -12,6 +8,8 @@ import tlv from './util/tlv';
 import enc from './util/encryption';
 
 export class Pairing {
+  static ED25519 = 'ed25519';
+
   private srp: srp.Client;
 
   private key: Buffer = crypto.randomBytes(32);
@@ -56,12 +54,12 @@ export class Pairing {
           let backOff: Buffer = tlvData[tlv.Tag.BackOff];
           let seconds = backOff.readIntBE(0, backOff.byteLength);
           if (seconds > 0) {
-            throw new Error("You've attempt to pair too recently. Try again in " + seconds + " seconds.");
+            throw new Error(`You've attempt to pair too recently. Try again in ${seconds} seconds.`);
           }
         }
         if (tlvData[tlv.Tag.ErrorCode]) {
           let buffer: Buffer = tlvData[tlv.Tag.ErrorCode];
-          throw new Error(that.device.name + " responded with error code " + buffer.readIntBE(0, buffer.byteLength) + ". Try rebooting your Apple TV.");
+          throw new Error(that.device.name + ' responded with error code ' + buffer.readIntBE(0, buffer.byteLength) + '. Try rebooting your Apple TV.');
         }
 
         that.deviceSalt = tlvData[tlv.Tag.Salt];
@@ -92,7 +90,7 @@ export class Pairing {
     this.publicKey = this.srp.computeA();
     this.proof = this.srp.computeM1();
 
-    // console.log("DEBUG: Client Public Key=" + this.publicKey.toString('hex') + "\nProof=" + this.proof.toString('hex'));
+    // console.log('DEBUG: Client Public Key=' + this.publicKey.toString('hex') + '\nProof=' + this.proof.toString('hex'));
 
     let that = this;
     let tlvData = tlv.encode(
@@ -113,30 +111,29 @@ export class Pairing {
       .then(message => {
         let pairingData = message.payload.pairingData;
         that.deviceProof = tlv.decode(pairingData)[tlv.Tag.Proof];
-        // console.log("DEBUG: Device Proof=" + that.deviceProof.toString('hex'));
+        // console.log('DEBUG: Device Proof=' + that.deviceProof.toString('hex'));
 
         that.srp.checkM2(that.deviceProof);
 
         let seed = crypto.randomBytes(32);
-        let keyPair = ed25519.MakeKeypair(seed);
-        let privateKey = keyPair.privateKey;
-        let publicKey = keyPair.publicKey;
+        const { secretKey, publicKey } = createKeyPair(seed);
+
         let sharedSecret = that.srp.computeK();
 
         let deviceHash = enc.HKDF(
-          "sha512",
-          Buffer.from("Pair-Setup-Controller-Sign-Salt"),
+          'sha512',
+          Buffer.from('Pair-Setup-Controller-Sign-Salt'),
           sharedSecret,
-          Buffer.from("Pair-Setup-Controller-Sign-Info"),
+          Buffer.from('Pair-Setup-Controller-Sign-Info'),
           32
         );
         let deviceInfo = Buffer.concat([deviceHash, Buffer.from(that.device.pairingId), publicKey]);
-        let deviceSignature = ed25519.Sign(deviceInfo, privateKey);
+        const deviceSignature = sign(deviceInfo, publicKey, secretKey);
         let encryptionKey = enc.HKDF(
-          "sha512",
-          Buffer.from("Pair-Setup-Encrypt-Salt"),
+          'sha512',
+          Buffer.from('Pair-Setup-Encrypt-Salt'),
           sharedSecret,
-          Buffer.from("Pair-Setup-Encrypt-Info"),
+          Buffer.from('Pair-Setup-Encrypt-Info'),
           32
         );
 
@@ -146,7 +143,7 @@ export class Pairing {
           tlv.Tag.Signature, deviceSignature
         );
         let encryptedTLV = Buffer.concat(enc.encryptAndSeal(tlvData, null, Buffer.from('PS-Msg05'), encryptionKey));
-        // console.log("DEBUG: Encrypted Data=" + encryptedTLV.toString('hex'));
+        // console.log('DEBUG: Encrypted Data=' + encryptedTLV.toString('hex'));
         let outerTLV = tlv.encode(
           tlv.Tag.Sequence, 0x05,
           tlv.Tag.EncryptedData, encryptedTLV
@@ -196,7 +193,7 @@ export class Pairing {
         }
       });
       setTimeout(() => {
-        reject(new Error("Timed out waiting for crypto sequence " + sequence));
+        reject(new Error('Timed out waiting for crypto sequence ' + sequence));
       }, timeout * 1000);
     })
     .then(value => {

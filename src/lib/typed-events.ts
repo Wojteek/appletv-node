@@ -9,11 +9,11 @@ export default class TypedEventEmitter<T> extends EventEmitter {
     return super.on(event, callback)
   }
 
-  on(event: keyof T, callback: (arg: T[typeof event]) => void): this {
+  on(event: string, callback: (arg: any) => void): this {
     return super.on(event, callback)
   }
 
-  emit(event: keyof T, payload?: T[typeof event]): boolean {
+  emit(event: string, payload?: any): boolean {
     return super.emit(event, payload)
   }
 }

@@ -61,5 +61,6 @@ typings/
 .next
 test.ts
 test
+.idea
 
 .DS_Store

@@ -3,7 +3,7 @@ import { load, Type, Message as ProtoMessage, Enum } from 'protobufjs'
 import { v4 as uuid } from 'uuid';
 import * as path from 'path';
 import * as varint from 'varint';
-import snake = require('snake-case');
+import { snakeCase } from 'snake-case';
 import camelcase = require('camelcase');
 
 import { Credentials } from './credentials';
@@ -142,7 +142,7 @@ export class Connection extends TypedEventEmitter<Connection.Events> {
     let ProtocolMessage = message.$type.parent['ProtocolMessage'];
     let types = ProtocolMessage.lookupEnum("Type");
     let name = message.$type.name;
-    let typeName = snake(name).toUpperCase();
+    let typeName = snakeCase(name).toUpperCase();
     let type = types.values[typeName];
     var outerMessage = ProtocolMessage.create({
       priority: priority,
