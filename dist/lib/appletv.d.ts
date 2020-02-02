@@ -75,13 +75,12 @@ export declare class AppleTV extends TypedEventEmitter<AppleTV.Events> {
     * @returns A promise that resolves to the AppleTV object after the message has been sent.
     */
     sendKeyCommand(key: AppleTV.Key): Promise<AppleTV>;
-    sendKeyPressAndRelease(usePage: number, usage: number): Promise<AppleTV>;
-    sendKeyPress(usePage: number, usage: number, down: boolean): Promise<AppleTV>;
+    private sendKeyPressAndRelease;
+    private sendKeyPress;
     private requestPlaybackQueueWithWait;
-    private sendIntroduction;
+    sendIntroduction(): Promise<Message>;
     private sendConnectionState;
     private sendClientUpdatesConfig;
-    private sendWakeDevice;
 }
 export declare module AppleTV {
     interface Events {
@@ -96,8 +95,6 @@ export declare module AppleTV {
     }
 }
 export declare module AppleTV {
-    /** An enumeration of key presses available.
-    */
     enum Key {
         Up = 0,
         Down = 1,
@@ -111,13 +108,11 @@ export declare module AppleTV {
         Suspend = 9,
         Select = 10,
         Topmenu = 11,
-        Wake = 12,
+        WakeUp = 12,
         VolumeUp = 13,
-        VolumeDown = 14
+        VolumeDown = 14,
+        Home = 15,
+        HomeHold = 16
     }
-    /** Convert a string representation of a key to the correct enum type.
-    * @param string  The string.
-    * @returns The key enum value.
-    */
-    function key(string: string): AppleTV.Key;
+    function key(key: string): AppleTV.Key;
 }

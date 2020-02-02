@@ -62,5 +62,6 @@ typings/
 test.ts
 test
 .idea
+demo
 
 .DS_Store

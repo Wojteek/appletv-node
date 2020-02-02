@@ -2,6 +2,7 @@ import { Service } from 'mdns';
 import * as path from 'path';
 import { load } from 'protobufjs'
 import { v4 as uuid } from 'uuid';
+import { promisify } from 'util';
 
 import { Connection } from './connection';
 import { Pairing } from './pairing'; 
@@ -12,12 +13,6 @@ import { SupportedCommand } from './supported-command';
 import TypedEventEmitter from './typed-events';
 import { Message } from './message';
 import number from './util/number';
-
-interface StateRequestCallback {
-  id: string;
-  resolve: (any) => void;
-  reject: (Error) => void;
-}
 
 export interface Size {
   width: number;
@@ -39,6 +34,8 @@ export interface ClientUpdatesConfig {
   volumeUpdates: boolean;
   keyboardUpdates: boolean;
 }
+
+const delay = promisify(setTimeout);
 
 export class AppleTV extends TypedEventEmitter<AppleTV.Events> {
   public name: string;
@@ -101,7 +98,7 @@ export class AppleTV extends TypedEventEmitter<AppleTV.Events> {
       that.emit('debug', message);
     });
 
-    var queuePollTimer = null;
+    let queuePollTimer = null;
     this._on('newListener', (event, listener) => {
       if (queuePollTimer == null && (event == 'nowPlaying' || event == 'supportedCommands')) {
         queuePollTimer = setInterval(() => {
@@ -163,7 +160,7 @@ export class AppleTV extends TypedEventEmitter<AppleTV.Events> {
             .then(keys => {
               that.credentials.readKey = keys['readKey'];
               that.credentials.writeKey = keys['writeKey'];
-              that.emit('debug', "DEBUG: Keys Read=" + that.credentials.readKey.toString('hex') + ", Write=" + that.credentials.writeKey.toString('hex'));
+              that.emit('debug', 'DEBUG: Keys Read=' + that.credentials.readKey.toString('hex') + ', Write=' + that.credentials.writeKey.toString('hex'));
               return that.sendConnectionState();
             });
         } else {
@@ -203,7 +200,7 @@ export class AppleTV extends TypedEventEmitter<AppleTV.Events> {
   * @returns A promise that resolves to the response from the AppleTV.
   */
   sendMessage(definitionFilename: string, messageType: string, body: {}, waitForResponse: boolean, priority: number = 0): Promise<Message> {
-    return load(path.resolve(__dirname + "/protos/" + definitionFilename + ".proto"))
+    return load(path.resolve(__dirname + '/protos/' + definitionFilename + '.proto'))
       .then(root => {
         let type = root.lookupType(messageType);
         return type.create(body);
@@ -225,7 +222,7 @@ export class AppleTV extends TypedEventEmitter<AppleTV.Events> {
     return new Promise<Message>((resolve, reject) => {
       let listener: (message: Message) => void;
       let timer = setTimeout(() => {
-        reject(new Error("Timed out waiting for message type " + type));
+        reject(new Error('Timed out waiting for message type ' + type));
         that.removeListener('message', listener);
       }, timeout * 1000);
       listener = (message: Message) => {
@@ -278,24 +275,30 @@ export class AppleTV extends TypedEventEmitter<AppleTV.Events> {
         return this.sendKeyPressAndRelease(1, 0x89);
       case AppleTV.Key.Topmenu:
         return this.sendKeyPressAndRelease(12, 0x60);
-      case AppleTV.Key.Wake:
+      case AppleTV.Key.WakeUp:
         return this.sendKeyPressAndRelease(1, 0x83);
       case AppleTV.Key.VolumeUp:
         return this.sendKeyPressAndRelease(12, 0xE9);
       case AppleTV.Key.VolumeDown:
         return this.sendKeyPressAndRelease(12, 0xEA);
+      case AppleTV.Key.Home:
+        return this.sendKeyPressAndRelease(12, 0x40);
+      case AppleTV.Key.HomeHold:
+        return this.sendKeyPressAndRelease(12, 0x40, true);
     }
   }
 
-  sendKeyPressAndRelease(usePage: number, usage: number): Promise<AppleTV> {
-    let that = this;
-    return this.sendKeyPress(usePage, usage, true)
-      .then(() => {
-        return that.sendKeyPress(usePage, usage, false);
-      });
+  private async sendKeyPressAndRelease(usePage: number, usage: number, hold = false): Promise<AppleTV> {
+    await this.sendKeyPress(usePage, usage, true);
+
+    if (hold) {
+      await delay(1000);
+    }
+
+    return this.sendKeyPress(usePage, usage, false);
   }
 
-  sendKeyPress(usePage: number, usage: number, down: boolean): Promise<AppleTV> {
+  private sendKeyPress(usePage: number, usage: number, down: boolean): Promise<AppleTV> {
     let time = Buffer.from('438922cf08020000', 'hex');
     let data = Buffer.concat([
       number.UInt16toBufferBE(usePage),
@@ -312,27 +315,28 @@ export class AppleTV extends TypedEventEmitter<AppleTV.Events> {
       ])
     };
     let that = this;
-    return this.sendMessage("SendHIDEventMessage", "SendHIDEventMessage", body, false)
+    return this.sendMessage('SendHIDEventMessage', 'SendHIDEventMessage', body, false)
       .then(() => {
         return that;
       });
   }
 
   private requestPlaybackQueueWithWait(options: PlaybackQueueRequestOptions, waitForResponse: boolean): Promise<any> {
-    var params: any = options;
+    const params: any = options;
+
     params.requestID = uuid();
     if (options.artworkSize) {
       params.artworkWidth = options.artworkSize.width;
       params.artworkHeight = options.artworkSize.height;
       delete params.artworkSize;
     }
-    return this.sendMessage("PlaybackQueueRequestMessage", "PlaybackQueueRequestMessage", params, waitForResponse);
+    return this.sendMessage('PlaybackQueueRequestMessage', 'PlaybackQueueRequestMessage', params, waitForResponse);
   }
 
-  private sendIntroduction(): Promise<Message> {
+  sendIntroduction(): Promise<Message> {
     let body = {
       uniqueIdentifier: this.pairingId,
-      name: 'node-appletv',
+      name: 'appletv-node',
       localizedModelName: 'iPhone',
       systemBuildVersion: '14G60',
       applicationBundleIdentifier: 'com.apple.TVRemote',
@@ -347,7 +351,7 @@ export class AppleTV extends TypedEventEmitter<AppleTV.Events> {
 
   private sendConnectionState(): Promise<Message> {
     let that = this;
-    return load(path.resolve(__dirname + "/protos/SetConnectionStateMessage.proto"))
+    return load(path.resolve(__dirname + '/protos/SetConnectionStateMessage.proto'))
       .then(root => {
         let type = root.lookupType('SetConnectionStateMessage');
         let stateEnum = type.lookupEnum('ConnectionState');
@@ -363,10 +367,6 @@ export class AppleTV extends TypedEventEmitter<AppleTV.Events> {
 
   private sendClientUpdatesConfig(config: ClientUpdatesConfig): Promise<Message> {
     return this.sendMessage('ClientUpdatesConfigMessage', 'ClientUpdatesConfigMessage', config, false);
-  }
-
-  private sendWakeDevice(): Promise<Message> {
-    return this.sendMessage('WakeDeviceMessage', 'WakeDeviceMessage', {}, false);
   }
 }
 
@@ -384,8 +384,6 @@ export module AppleTV {
 }
 
 export module AppleTV {
-  /** An enumeration of key presses available.
-  */
   export enum Key {
     Up,
     Down,
@@ -399,46 +397,47 @@ export module AppleTV {
     Suspend,
     Select,
     Topmenu,
-    Wake,
+    WakeUp,
     VolumeUp,
     VolumeDown,
+    Home,
+    HomeHold,
   }
 
-  /** Convert a string representation of a key to the correct enum type.
-  * @param string  The string.
-  * @returns The key enum value.
-  */
-  export function key(string: string): AppleTV.Key {
-    if (string == "up") {
-      return AppleTV.Key.Up;
-    } else if (string == "down") {
-      return AppleTV.Key.Down;
-    } else if (string == "left") {
-      return AppleTV.Key.Left;
-    } else if (string == "right") {
-      return AppleTV.Key.Right;
-    } else if (string == "menu") {
-      return AppleTV.Key.Menu;
-    } else if (string == "play") {
-      return AppleTV.Key.Play;
-    } else if (string == "pause") {
-      return AppleTV.Key.Pause;
-    } else if (string == "next") {
-      return AppleTV.Key.Next;
-    } else if (string == "previous") {
-      return AppleTV.Key.Previous;
-    } else if (string == "suspend") {
-      return AppleTV.Key.Suspend;
-    } else if (string == "select") {
-      return AppleTV.Key.Select;
-    } else if (string == "topmenu") {
-      return AppleTV.Key.Topmenu;
-    } else if (string == "wake") {
-      return AppleTV.Key.Wake;
-    } else if (string == "volumeup") {
-      return AppleTV.Key.VolumeUp;
-    } else if (string == "volumedown") {
-      return AppleTV.Key.VolumeDown;
+  export function key(key: string): AppleTV.Key {
+    switch (key) {
+      case 'up':
+        return AppleTV.Key.Up;
+      case 'down':
+        return AppleTV.Key.Down;
+      case 'left':
+        return AppleTV.Key.Left;
+      case 'right':
+        return AppleTV.Key.Right;
+      case 'menu':
+        return AppleTV.Key.Menu;
+      case 'play':
+        return AppleTV.Key.Play;
+      case 'pause':
+        return AppleTV.Key.Pause;
+      case 'previous':
+        return AppleTV.Key.Previous;
+      case 'suspend':
+        return AppleTV.Key.Suspend;
+      case 'select':
+        return AppleTV.Key.Select;
+      case 'topmenu':
+        return AppleTV.Key.Topmenu;
+      case 'wakeup':
+        return AppleTV.Key.WakeUp;
+      case 'volumeup':
+        return AppleTV.Key.VolumeUp;
+      case 'volumedown':
+        return AppleTV.Key.VolumeDown;
+      case 'home':
+        return AppleTV.Key.Home;
+      case 'homehold':
+        return AppleTV.Key.HomeHold;
     }
   }
 }
