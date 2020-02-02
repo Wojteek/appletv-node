@@ -1,6 +1,6 @@
 import { Service } from 'mdns';
 import * as path from 'path';
-import { load, Message as ProtoMessage } from 'protobufjs'
+import { load } from 'protobufjs'
 import { v4 as uuid } from 'uuid';
 
 import { Connection } from './connection';
@@ -276,10 +276,18 @@ export class AppleTV extends TypedEventEmitter<AppleTV.Events> {
         return this.sendKeyPressAndRelease(1, 0x82);
       case AppleTV.Key.Select:
         return this.sendKeyPressAndRelease(1, 0x89);
+      case AppleTV.Key.Topmenu:
+        return this.sendKeyPressAndRelease(12, 0x60);
+      case AppleTV.Key.Wake:
+        return this.sendKeyPressAndRelease(1, 0x83);
+      case AppleTV.Key.VolumeUp:
+        return this.sendKeyPressAndRelease(12, 0xE9);
+      case AppleTV.Key.VolumeDown:
+        return this.sendKeyPressAndRelease(12, 0xEA);
     }
   }
 
-  private sendKeyPressAndRelease(usePage: number, usage: number): Promise<AppleTV> {
+  sendKeyPressAndRelease(usePage: number, usage: number): Promise<AppleTV> {
     let that = this;
     return this.sendKeyPress(usePage, usage, true)
       .then(() => {
@@ -287,7 +295,7 @@ export class AppleTV extends TypedEventEmitter<AppleTV.Events> {
       });
   }
 
-  private sendKeyPress(usePage: number, usage: number, down: boolean): Promise<AppleTV> {
+  sendKeyPress(usePage: number, usage: number, down: boolean): Promise<AppleTV> {
     let time = Buffer.from('438922cf08020000', 'hex');
     let data = Buffer.concat([
       number.UInt16toBufferBE(usePage),
@@ -389,7 +397,11 @@ export module AppleTV {
     Next,
     Previous,
     Suspend,
-    Select
+    Select,
+    Topmenu,
+    Wake,
+    VolumeUp,
+    VolumeDown,
   }
 
   /** Convert a string representation of a key to the correct enum type.
@@ -419,6 +431,14 @@ export module AppleTV {
       return AppleTV.Key.Suspend;
     } else if (string == "select") {
       return AppleTV.Key.Select;
+    } else if (string == "topmenu") {
+      return AppleTV.Key.Topmenu;
+    } else if (string == "wake") {
+      return AppleTV.Key.Wake;
+    } else if (string == "volumeup") {
+      return AppleTV.Key.VolumeUp;
+    } else if (string == "volumedown") {
+      return AppleTV.Key.VolumeDown;
     }
   }
 }

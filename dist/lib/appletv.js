@@ -231,6 +231,14 @@ class AppleTV extends typed_events_1.default {
                 return this.sendKeyPressAndRelease(1, 0x82);
             case AppleTV.Key.Select:
                 return this.sendKeyPressAndRelease(1, 0x89);
+            case AppleTV.Key.Topmenu:
+                return this.sendKeyPressAndRelease(12, 0x60);
+            case AppleTV.Key.Wake:
+                return this.sendKeyPressAndRelease(1, 0x83);
+            case AppleTV.Key.VolumeUp:
+                return this.sendKeyPressAndRelease(12, 0xE9);
+            case AppleTV.Key.VolumeDown:
+                return this.sendKeyPressAndRelease(12, 0xEA);
         }
     }
     sendKeyPressAndRelease(usePage, usage) {
@@ -324,6 +332,10 @@ exports.AppleTV = AppleTV;
         Key[Key["Previous"] = 8] = "Previous";
         Key[Key["Suspend"] = 9] = "Suspend";
         Key[Key["Select"] = 10] = "Select";
+        Key[Key["Topmenu"] = 11] = "Topmenu";
+        Key[Key["Wake"] = 12] = "Wake";
+        Key[Key["VolumeUp"] = 13] = "VolumeUp";
+        Key[Key["VolumeDown"] = 14] = "VolumeDown";
     })(Key = AppleTV.Key || (AppleTV.Key = {}));
     /** Convert a string representation of a key to the correct enum type.
     * @param string  The string.
@@ -362,6 +374,18 @@ exports.AppleTV = AppleTV;
         }
         else if (string == "select") {
             return AppleTV.Key.Select;
+        }
+        else if (string == "topmenu") {
+            return AppleTV.Key.Topmenu;
+        }
+        else if (string == "wake") {
+            return AppleTV.Key.Wake;
+        }
+        else if (string == "volumeup") {
+            return AppleTV.Key.VolumeUp;
+        }
+        else if (string == "volumedown") {
+            return AppleTV.Key.VolumeDown;
         }
     }
     AppleTV.key = key;
