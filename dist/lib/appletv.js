@@ -309,11 +309,6 @@ class AppleTV extends typed_events_1.default {
             allowsPairing: true,
             lastSupportedMessageType: 77,
             supportsSystemPairing: true,
-            supportsSharedQueue: true,
-            supportsACL: true,
-            supportsExtendedMotion: true,
-            sharedQueueVersion: 2,
-            deviceClass: 1,
             logicalDeviceCount: 1,
         };
         return this.sendMessage('DeviceInfoMessage', 'DeviceInfoMessage', body, true);

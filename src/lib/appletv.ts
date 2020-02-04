@@ -347,11 +347,6 @@ export class AppleTV extends TypedEventEmitter<AppleTV.Events> {
       allowsPairing: true,
       lastSupportedMessageType: 77,
       supportsSystemPairing: true,
-      supportsSharedQueue: true,
-      supportsACL: true,
-      supportsExtendedMotion: true,
-      sharedQueueVersion: 2,
-      deviceClass: 1,
       logicalDeviceCount: 1,
     };
 
