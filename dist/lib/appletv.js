@@ -21,6 +21,7 @@ const supported_command_1 = require("./supported-command");
 const typed_events_1 = require("./typed-events");
 const message_1 = require("./message");
 const number_1 = require("./util/number");
+const { name } = require('../../package.json');
 const delay = util_1.promisify(setTimeout);
 class AppleTV extends typed_events_1.default {
     constructor(service) {
@@ -297,17 +298,23 @@ class AppleTV extends typed_events_1.default {
         return this.sendMessage('PlaybackQueueRequestMessage', 'PlaybackQueueRequestMessage', params, waitForResponse);
     }
     sendIntroduction() {
-        let body = {
+        const body = {
             uniqueIdentifier: this.pairingId,
             name: 'appletv-node',
             localizedModelName: 'iPhone',
-            systemBuildVersion: '14G60',
+            systemBuildVersion: '17B111',
             applicationBundleIdentifier: 'com.apple.TVRemote',
-            applicationBundleVersion: '320.18',
+            applicationBundleVersion: '344.28',
             protocolVersion: 1,
             allowsPairing: true,
-            lastSupportedMessageType: 45,
+            lastSupportedMessageType: 77,
             supportsSystemPairing: true,
+            supportsSharedQueue: true,
+            supportsACL: true,
+            supportsExtendedMotion: true,
+            sharedQueueVersion: 2,
+            deviceClass: 1,
+            logicalDeviceCount: 1,
         };
         return this.sendMessage('DeviceInfoMessage', 'DeviceInfoMessage', body, true);
     }

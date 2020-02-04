@@ -3,9 +3,9 @@ import * as path from 'path';
 import { load } from 'protobufjs'
 import { v4 as uuid } from 'uuid';
 import { promisify } from 'util';
-
 import { Connection } from './connection';
-import { Pairing } from './pairing'; 
+
+import { Pairing } from './pairing';
 import { Verifier } from './verifier';
 import { Credentials } from './credentials';
 import { NowPlayingInfo } from './now-playing-info';
@@ -13,6 +13,8 @@ import { SupportedCommand } from './supported-command';
 import TypedEventEmitter from './typed-events';
 import { Message } from './message';
 import number from './util/number';
+
+const { name } = require('../../package.json');
 
 export interface Size {
   width: number;
@@ -334,18 +336,25 @@ export class AppleTV extends TypedEventEmitter<AppleTV.Events> {
   }
 
   sendIntroduction(): Promise<Message> {
-    let body = {
+    const body = {
       uniqueIdentifier: this.pairingId,
       name: 'appletv-node',
       localizedModelName: 'iPhone',
-      systemBuildVersion: '14G60',
+      systemBuildVersion: '17B111',
       applicationBundleIdentifier: 'com.apple.TVRemote',
-      applicationBundleVersion: '320.18',
+      applicationBundleVersion: '344.28',
       protocolVersion: 1,
       allowsPairing: true,
-      lastSupportedMessageType: 45,
+      lastSupportedMessageType: 77,
       supportsSystemPairing: true,
+      supportsSharedQueue: true,
+      supportsACL: true,
+      supportsExtendedMotion: true,
+      sharedQueueVersion: 2,
+      deviceClass: 1,
+      logicalDeviceCount: 1,
     };
+
     return this.sendMessage('DeviceInfoMessage', 'DeviceInfoMessage', body, true);
   }
 
